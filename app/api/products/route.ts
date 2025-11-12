@@ -1,5 +1,6 @@
 import { createClient, type RedisClientType } from "redis";
 import { NextResponse, NextRequest } from "next/server";
+import { StatusCodes } from "http-status-codes";
 
 import { Product } from "@/types";
 
@@ -34,39 +35,97 @@ async function getProducts(): Promise<Product[]> {
   return products;
 }
 
-export async function GET() {
-  const products = await getProducts();
+export async function GET(request: NextRequest) {
+  const id = request.nextUrl.searchParams.get("id");
+  let search = request.nextUrl.searchParams.get("search");
+  let products = await getProducts();
+
+  if (id) {
+    const product = products.find((p) => p.id.toString() === id);
+    return NextResponse.json(product);
+  }
+
+  if (!search?.trim()) {
+    return NextResponse.json(products);
+  }
+
+  search = search.toLowerCase();
+  products = products.filter((p) => {
+    const { title, description } = p;
+    return (
+      title.toLowerCase().startsWith(search) ||
+      description.toLowerCase().startsWith(search)
+    );
+  });
   return NextResponse.json(products);
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const newProductData = (await request.json()) as Omit<Product, "id">;
+    const data: Product = await request.json();
 
     const products = await getProducts();
 
+    // edit
+    if (data.id) {
+      const pruductIndex = products.findIndex((p) => p.id === data.id);
+      if (pruductIndex === -1) {
+        return NextResponse.json(
+          { message: "Product not found" },
+          { status: StatusCodes.NOT_FOUND }
+        );
+      }
+
+      products[pruductIndex] = { ...products[pruductIndex], ...data };
+
+      if (redisClient) {
+        await redisClient.set(PRODUCTS_KEY, JSON.stringify(products));
+      }
+
+      return NextResponse.json(products[pruductIndex], {
+        status: StatusCodes.OK,
+      });
+    }
+
+    // add new
     const newId = products.length
       ? Math.max(...products.map((p) => p.id)) + 1
       : 1;
 
-    const productWithId: Product = {
+    data.id = newId;
+
+    const newProduct: Product = {
+      ...data,
       id: newId,
-      ...newProductData,
-      price: parseFloat(newProductData.price as unknown as string),
     };
 
-    products.push(productWithId);
+    products.push(newProduct);
 
     if (redisClient) {
       await redisClient.set(PRODUCTS_KEY, JSON.stringify(products));
     }
 
-    return NextResponse.json(productWithId, { status: 201 });
+    return NextResponse.json(newProduct, { status: StatusCodes.CREATED });
   } catch (error) {
     console.error("Redis Write Error:", error);
     return NextResponse.json(
       { message: "Error adding product" },
-      { status: 500 }
+      { status: StatusCodes.INTERNAL_SERVER_ERROR }
     );
   }
+}
+
+export async function DELETE(request: NextRequest) {
+  const id = request.nextUrl.searchParams.get("id");
+  if (!id) {
+    return NextResponse.json({ success: false, status: StatusCodes.NOT_FOUND });
+  }
+  let products = await getProducts();
+  products = products.filter((p) => p.id.toString() !== id);
+
+  if (redisClient) {
+    await redisClient.set(PRODUCTS_KEY, JSON.stringify(products));
+  }
+
+  return NextResponse.json({ success: true, status: StatusCodes.NO_CONTENT });
 }

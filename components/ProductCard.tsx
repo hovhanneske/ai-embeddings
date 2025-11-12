@@ -21,7 +21,7 @@ export default function ProductCard({ product }: Props) {
       <div className="p-4">
         <h2 className="text-xl font-semibold mb-1 truncate">{product.title}</h2>
         <p className="text-gray-600 line-clamp-2 mb-2">{product.description}</p>
-        <p className="text-2xl font-bold text-green-600">${product.price.toFixed(2)}</p>
+        <p className="text-2xl font-bold text-green-600">${Number(product.price).toFixed(2)}</p>
       </div>
     </Link>
   );

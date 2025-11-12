@@ -1,5 +1,5 @@
 import ProductForm from "@/components/ProductForm";
 
-export default function AddProductPage() {
+export default function EditProductPage() {
   return <ProductForm/>;
 }

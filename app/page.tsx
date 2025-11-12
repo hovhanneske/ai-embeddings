@@ -1,5 +1,7 @@
 "use client";
 
+import {toast} from "react-hot-toast";
+
 import { useState, useEffect } from "react";
 
 import ProductCard from "@/components/ProductCard";
@@ -21,7 +23,8 @@ export default function SearchPage() {
         const data = await res.json();
         setProducts(data);
       } catch (error) {
-        console.error("Error fetching products:", error);
+        toast.error("Failed to fetch products.");
+        console.error(error);
       }
       setLoading(false);
     }

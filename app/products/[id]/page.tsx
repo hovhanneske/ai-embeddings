@@ -1,6 +1,8 @@
 import Image from "next/image";
+import Link from "next/link";
 
 import type { Product } from "@/types";
+import DeleteButton from "./DeleteButton";
 
 
 async function getProduct(id: string) {
@@ -35,13 +37,16 @@ export default async function ProductDetailPage({ params }: Props) {
       </div>
       <div className="w-full md:w-1/2">
         <h1 className="text-4xl font-bold mb-4">{product.title}</h1>
-        <p className="text-3xl font-extrabold text-green-700 mb-6">${product.price.toFixed(2)}</p>
+        <p className="text-3xl font-extrabold text-green-700 mb-6">${Number(product.price).toFixed(2)}</p>
         <h2 className="text-xl font-semibold border-b pb-2 mb-4">Description</h2>
         <p className="text-gray-700 leading-relaxed">{product.description}</p>
-        
-        <button className="mt-8 w-full py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition duration-200">
-          Add to Cart
-        </button>
+
+        <Link href={`/admin/edit/${product.id}`}
+              className="flex justify-center mt-8 w-full py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition duration-200">
+          Edit
+        </Link>
+
+        <DeleteButton id={id}/>
       </div>
     </div>
   );
