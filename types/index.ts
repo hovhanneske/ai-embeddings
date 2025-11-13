@@ -2,13 +2,14 @@ export interface Product {
   id: number;
   title: string;
   description: string;
-  price: number;
+  price: string;
   image: string;
+  embeddings: number[] | null;
 }
 
 export interface ProductFormState {
   title: string;
   description: string;
-  price: string; // Use string for input value to handle decimals easily
+  price: string;
   image: string;
 }

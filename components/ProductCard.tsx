@@ -10,7 +10,8 @@ interface Props {
 export default function ProductCard({ product }: Props) {
   return (
     <Link href={`/products/${product.id}`} className="block border rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 overflow-hidden">
-      <div className="relative w-full h-48 bg-gray-100">
+      <div className="relative w-full h-48 bg-gray-100"
+           data-has-embeddings={product.embeddings?.length ? "true" : "false"}>
         <Image 
           src={product.image || "/images/default.jpg"} 
           alt={product.title} 

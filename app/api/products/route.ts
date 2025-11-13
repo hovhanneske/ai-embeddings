@@ -1,13 +1,43 @@
 import { createClient, type RedisClientType } from "redis";
+import { GoogleGenAI } from "@google/genai";
+import cosineSimilarity from "compute-cosine-similarity";
 import { NextResponse, NextRequest } from "next/server";
 import { StatusCodes } from "http-status-codes";
 
 import { Product } from "@/types";
 
+const ai = new GoogleGenAI({});
+const embeddingModel = "gemini-embedding-001";
+
 const PRODUCTS_KEY = "products:catalog";
 
 let products: Product[] = [];
 let redisClient: RedisClientType | null = null;
+
+const saveProductsInRedis = async (products: Product[]) => {
+  if (redisClient) {
+    await redisClient.set(PRODUCTS_KEY, JSON.stringify(products));
+  }
+};
+
+const generateEmbedding = async (text: string): Promise<number[] | null> => {
+  try {
+    const response = await ai.models.embedContent({
+      model: embeddingModel,
+      contents: text,
+    });
+
+    if (!response.embeddings?.[0]?.values?.length) {
+      return null;
+    }
+
+    const values = response.embeddings[0].values;
+    return values;
+  } catch (error) {
+    console.error("Embedding Generation Error:", error);
+    return null;
+  }
+};
 
 try {
   redisClient = createClient({ url: process.env.REDIS_URL });
@@ -35,8 +65,25 @@ async function getProducts(): Promise<Product[]> {
   return products;
 }
 
+const validatePostPayload = (data: Product) => {
+  let isValid = true;
+  const errors: { [key: string]: string } = {};
+
+  ["title", "description", "price", "image"].forEach((field) => {
+    const value = data[field as keyof Product];
+    if (!value) {
+      isValid = false;
+      errors[field] = `${field} is required`;
+    }
+  });
+
+  return { isValid, errors };
+};
+
 export async function GET(request: NextRequest) {
   const id = request.nextUrl.searchParams.get("id");
+  const useSemanticSearch =
+    request.nextUrl.searchParams.get("useSemanticSearch");
   let search = request.nextUrl.searchParams.get("search");
   let products = await getProducts();
 
@@ -49,6 +96,20 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(products);
   }
 
+  const semanticSearch =
+    useSemanticSearch === "true" ? await generateEmbedding(search) : false;
+
+  if (semanticSearch) {
+    products = products.filter((p) => {
+      if (!p.embeddings) return false;
+      const similarity = cosineSimilarity(p.embeddings, semanticSearch);
+      return similarity && similarity > 0.75;
+    });
+
+    return NextResponse.json(products);
+  }
+
+  // use regular search if embedding
   search = search.toLowerCase();
   products = products.filter((p) => {
     const { title, description } = p;
@@ -64,6 +125,14 @@ export async function POST(request: NextRequest) {
   try {
     const data: Product = await request.json();
 
+    const { isValid, errors } = validatePostPayload(data);
+    if (!isValid) {
+      return NextResponse.json(
+        { message: "Product not found", errors },
+        { status: StatusCodes.BAD_REQUEST }
+      );
+    }
+
     const products = await getProducts();
 
     // edit
@@ -76,11 +145,14 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // generate new embedding when title changed
+      if (products[pruductIndex].title !== data.title) {
+        products[pruductIndex].embeddings = await generateEmbedding(data.title);
+      }
+
       products[pruductIndex] = { ...products[pruductIndex], ...data };
 
-      if (redisClient) {
-        await redisClient.set(PRODUCTS_KEY, JSON.stringify(products));
-      }
+      await saveProductsInRedis(products);
 
       return NextResponse.json(products[pruductIndex], {
         status: StatusCodes.OK,
@@ -94,16 +166,17 @@ export async function POST(request: NextRequest) {
 
     data.id = newId;
 
+    const embeddings = await generateEmbedding(data.title);
+
     const newProduct: Product = {
       ...data,
       id: newId,
+      embeddings,
     };
 
     products.push(newProduct);
 
-    if (redisClient) {
-      await redisClient.set(PRODUCTS_KEY, JSON.stringify(products));
-    }
+    await saveProductsInRedis(products);
 
     return NextResponse.json(newProduct, { status: StatusCodes.CREATED });
   } catch (error) {
@@ -123,9 +196,7 @@ export async function DELETE(request: NextRequest) {
   let products = await getProducts();
   products = products.filter((p) => p.id.toString() !== id);
 
-  if (redisClient) {
-    await redisClient.set(PRODUCTS_KEY, JSON.stringify(products));
-  }
+  await saveProductsInRedis(products);
 
   return NextResponse.json({ success: true, status: StatusCodes.NO_CONTENT });
 }
