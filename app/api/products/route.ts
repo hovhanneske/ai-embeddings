@@ -8,6 +8,7 @@ import { Product } from "@/types";
 
 const ai = new GoogleGenAI({});
 const embeddingModel = "gemini-embedding-001";
+const threashold = 0.7;
 
 const PRODUCTS_KEY = "products:catalog";
 
@@ -100,10 +101,12 @@ export async function GET(request: NextRequest) {
     useSemanticSearch === "true" ? await generateEmbedding(search) : false;
 
   if (semanticSearch) {
+    console.log(search);
     products = products.filter((p) => {
       if (!p.embeddings) return false;
       const similarity = cosineSimilarity(p.embeddings, semanticSearch);
-      return similarity && similarity > 0.75;
+      console.log(p.title, similarity);
+      return similarity && similarity > threashold;
     });
 
     return NextResponse.json(products);

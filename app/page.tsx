@@ -49,7 +49,7 @@ export default function SearchPage() {
         <label htmlFor="search">Search</label>
         <input
           id="search"
-          type="text"
+          type="search"
           placeholder="Search by title"
           onChange={(e) => setSearchTerm(e.target.value)}
           className="w-full p-4 border-2 border-gray-300 rounded-lg shadow-inner focus:outline-none focus:border-green-500"
