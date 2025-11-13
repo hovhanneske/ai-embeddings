@@ -5,6 +5,8 @@ import { toast } from "react-hot-toast";
 import { useState, FormEvent, ChangeEvent, useEffect } from "react";
 import { useParams } from "next/navigation";
 
+import { createOrEditProduct, getProductById } from "@/app/services";
+
 import { ProductFormState } from "@/types";
 
 export default function ProductForm() {
@@ -17,7 +19,7 @@ export default function ProductForm() {
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const { id } = useParams();
+  const { id } = useParams<{id: string}>();
 
   const handleChange = (
     e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -39,26 +41,14 @@ export default function ProductForm() {
     setIsLoading(true);
     setMessage("Submitting...");
 
-    const payload = {
-      ...formData,
-      id: Number(id),
-      price: parseFloat(formData.price),
-    };
-
-    const res = await fetch("/api/products", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-
-    setIsLoading(false);
-
-    if (res.ok) {
+    try {
+      await createOrEditProduct(formData, id);
       const message = `Product ${id ? "edited" : "added"} successfully!`;
       toast.success(message);
       setMessage(message);
       return true;
-    } else {
+    } catch (error) {
+      console.log(error);
       const message = `Failed to ${
         id ? "edit" : "add"
       } product. Please try again.`;
@@ -66,6 +56,8 @@ export default function ProductForm() {
       setMessage(message);
       return false;
     }
+
+    setIsLoading(false);
   };
 
   useEffect(() => {
@@ -73,21 +65,11 @@ export default function ProductForm() {
 
     const getProductData = async () => {
       try {
-        const response = await fetch(`/api/products?id=${id}`);
-        if (response.ok) {
-          const data = await response.json();
-          setFormData({
-            title: data.title || "",
-            description: data.description || "",
-            price: data.price ? data.price.toString() : "",
-            image: data.image || "",
-          });
-        } else {
-          toast.error("Failed to fetch product data");
-        }
+        const {data: product} = await getProductById(Number(id));
+        setFormData(product);
       } catch (error) {
-        toast.error("Error fetching product data");
         console.error(error);
+        toast.error("Failed to fetch product data");
       }
     };
     getProductData();

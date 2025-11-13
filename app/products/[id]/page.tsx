@@ -1,16 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
 
-import type { Product } from "@/types";
 import DeleteButton from "./DeleteButton";
 
-
-async function getProduct(id: string) {
-  const res = await fetch("http://localhost:3000/api/products");
-  const products: Product[] = await res.json();
-  return products.find((p) => p.id.toString() === id);
-}
-
+import { getProductById } from "@/app/services";
 interface Props {
   params: Promise<{
     id: string;
@@ -19,7 +12,13 @@ interface Props {
 
 export default async function ProductDetailPage({ params }: Props) {
   const {id} = await params;
-  const product = await getProduct(id);
+  let product;
+  try {
+    const {data} = await getProductById(Number(id));
+    product = data;
+  } catch (error) {
+    console.log(error);
+  }
 
   if (!product) {
     return <div className="text-center p-10 text-xl text-red-500">Product not found.</div>;

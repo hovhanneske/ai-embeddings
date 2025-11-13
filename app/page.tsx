@@ -6,6 +6,9 @@ import { useState, useEffect } from "react";
 
 import ProductCard from "@/components/ProductCard";
 
+import { getProducts } from "./services";
+
+
 import type { Product } from "@/types";
 
 export default function SearchPage() {
@@ -19,10 +22,7 @@ export default function SearchPage() {
     async function fetchProducts() {
       setLoading(true);
       try {
-        const res = await fetch(
-          `/api/products?useSemanticSearch=${useSemanticSearch}&search=${encodeURIComponent(debouncedSearch)}`
-        );
-        const data = await res.json();
+        const {data} = await getProducts(useSemanticSearch, debouncedSearch);
         setProducts(data);
       } catch (error) {
         toast.error("Failed to fetch products.");
