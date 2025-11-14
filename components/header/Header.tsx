@@ -5,7 +5,7 @@ export default function Header() {
     <header className="bg-green-700 text-white p-4 shadow-lg">
       <div className="container mx-auto flex justify-between items-center">
         <Link href="/" className="text-2xl font-bold">
-          E-Commerce Search
+          Semantic search with AI
         </Link>
         <nav>
           <Link href="/admin/add" className="ml-4 hover:underline">
