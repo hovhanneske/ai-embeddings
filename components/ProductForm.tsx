@@ -65,8 +65,8 @@ export default function ProductForm() {
 
     const getProductData = async () => {
       try {
-        const {data: product} = await getProductById(Number(id));
-        setFormData(product);
+        const {data} = await getProductById(Number(id));
+        setFormData(data.product);
       } catch (error) {
         console.error(error);
         toast.error("Failed to fetch product data");

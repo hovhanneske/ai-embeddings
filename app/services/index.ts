@@ -14,7 +14,7 @@ export const getProducts = async (
   useSemanticSearch: boolean,
   search: string
 ) => {
-  return axios.get<Product[]>(
+  return axios.get<{ products: Product[] }>(
     `${BASE_URL}?useSemanticSearch=${useSemanticSearch}&search=${encodeURIComponent(
       search
     )}`
@@ -22,7 +22,7 @@ export const getProducts = async (
 };
 
 export const getProductById = async (id: number) => {
-  return axios.get<Product>(`${BASE_URL}?id=${id}`);
+  return axios.get<{ product: Product }>(`${BASE_URL}?id=${id}`);
 };
 
 export const createOrEditProduct = async (

@@ -7,8 +7,8 @@ import { StatusCodes } from "http-status-codes";
 import { Product } from "@/types";
 
 const ai = new GoogleGenAI({});
-const embeddingModel = "gemini-embedding-001";
-const threashold = 0.7;
+const EMBEDDING_MODEL = "gemini-embedding-001";
+const THREASHOLD = 0.7;
 
 const PRODUCTS_KEY = "products:catalog";
 
@@ -24,7 +24,7 @@ const saveProductsInRedis = async (products: Product[]) => {
 const generateEmbedding = async (text: string): Promise<number[] | null> => {
   try {
     const response = await ai.models.embedContent({
-      model: embeddingModel,
+      model: EMBEDDING_MODEL,
       contents: text,
     });
 
@@ -90,26 +90,31 @@ export async function GET(request: NextRequest) {
 
   if (id) {
     const product = products.find((p) => p.id.toString() === id);
-    return NextResponse.json(product);
+    return NextResponse.json({ product: product });
   }
 
   if (!search?.trim()) {
-    return NextResponse.json(products);
+    return NextResponse.json({ products });
   }
 
   const semanticSearch =
     useSemanticSearch === "true" ? await generateEmbedding(search) : false;
 
   if (semanticSearch) {
-    console.log(search);
+    const similarities: { [key: string]: number | null } = {};
+
     products = products.filter((p) => {
-      if (!p.embeddings) return false;
+      const title = p.title;
+      if (!p.embeddings) {
+        similarities[title] = null;
+        return false;
+      }
       const similarity = cosineSimilarity(p.embeddings, semanticSearch);
-      console.log(p.title, similarity);
-      return similarity && similarity > threashold;
+      similarities[title] = similarity;
+      return similarity && similarity > THREASHOLD;
     });
 
-    return NextResponse.json(products);
+    return NextResponse.json({ products, similarities });
   }
 
   // use regular search if embedding
@@ -121,7 +126,7 @@ export async function GET(request: NextRequest) {
       description.toLowerCase().startsWith(search)
     );
   });
-  return NextResponse.json(products);
+  return NextResponse.json({ products });
 }
 
 export async function POST(request: NextRequest) {

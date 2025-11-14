@@ -15,7 +15,7 @@ export default async function ProductDetailPage({ params }: Props) {
   let product;
   try {
     const {data} = await getProductById(Number(id));
-    product = data;
+    product = data.product;
   } catch (error) {
     console.log(error);
   }

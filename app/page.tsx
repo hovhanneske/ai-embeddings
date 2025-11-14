@@ -23,7 +23,7 @@ export default function SearchPage() {
       setLoading(true);
       try {
         const {data} = await getProducts(useSemanticSearch, debouncedSearch);
-        setProducts(data);
+        setProducts(data.products);
       } catch (error) {
         toast.error("Failed to fetch products.");
         console.error(error);
