@@ -45,6 +45,6 @@ export const createOrEditProduct = async (
   return axios.post(BASE_URL, payload);
 };
 
-export const deleteProduct = async (id: string) => {
-  return axios.delete(`${BASE_URL}`, { data: { id } });
+export const deleteProduct = async (id: string, password: string) => {
+  return axios.delete(`${BASE_URL}`, { data: { id, password } });
 };
