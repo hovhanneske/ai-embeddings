@@ -55,9 +55,9 @@ export default function ProductForm() {
       toast.error(message);
       setMessage(message);
       return false;
+    } finally {
+      setIsLoading(false);
     }
-
-    setIsLoading(false);
   };
 
   useEffect(() => {
