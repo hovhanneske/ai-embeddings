@@ -46,5 +46,5 @@ export const createOrEditProduct = async (
 };
 
 export const deleteProduct = async (id: string) => {
-  return axios.delete(`${BASE_URL}?id=${id}`);
+  return axios.delete(`${BASE_URL}`, { data: { id } });
 };

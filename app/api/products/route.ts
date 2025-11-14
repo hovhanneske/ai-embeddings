@@ -149,9 +149,22 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
-  const id = request.nextUrl.searchParams.get("id");
+  const { id, password }: { id: string; password: string } =
+    await request.json();
   if (!id) {
-    return NextResponse.json({ success: false, status: StatusCodes.NOT_FOUND });
+    return NextResponse.json(
+      { success: false },
+      { status: StatusCodes.NOT_FOUND }
+    );
+  }
+
+  const isAdmin = await checkPassword(password);
+
+  if (!isAdmin) {
+    return NextResponse.json(
+      { message: "Invalid Password" },
+      { status: StatusCodes.BAD_REQUEST }
+    );
   }
 
   products = products.filter((p) => p.id.toString() !== id);
