@@ -1,105 +1,30 @@
-import { createClient, type RedisClientType } from "redis";
-import { GoogleGenAI } from "@google/genai";
-import cosineSimilarity from "compute-cosine-similarity";
-import bcrypt from "bcrypt";
 import { NextResponse, NextRequest } from "next/server";
+import cosineSimilarity from "compute-cosine-similarity";
 import { StatusCodes } from "http-status-codes";
 
+// UTILS
+import { createRedisClient } from "@/utils/createRedisClient";
+import { getInitialProductsFromRedis } from "@/utils/getInitialProductsFromRedis";
+import { saveProductsInRedis } from "@/utils/saveProductsInRedis";
+import { generateEmbedding } from "@/utils/generateEmbedding";
+import { checkPassword } from "@/utils/checkPassword";
+import { validatePostPayload } from "@/utils/validatePostPayload";
+
+// CONSTANTS
+import { THREASHOLD } from "@/constants";
+
+// TYPES
 import { Product } from "@/types";
 
-if (!process.env.ADMIN_PASSWORD_HASH) {
-  throw new Error("ADMIN_PASSWORD_HASH env variable is required.");
-}
-const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH.replaceAll(
-  "_DOLLAR_",
-  "$"
-);
+const redisClient = await createRedisClient();
 
-const ai = new GoogleGenAI({});
-const EMBEDDING_MODEL = "gemini-embedding-001";
-const THREASHOLD = 0.7;
-
-const PRODUCTS_KEY = "products:catalog";
-
-let products: Product[] = [];
-let redisClient: RedisClientType | null = null;
-
-const saveProductsInRedis = async (products: Product[]) => {
-  if (redisClient) {
-    await redisClient.set(PRODUCTS_KEY, JSON.stringify(products));
-  }
-};
-
-const generateEmbedding = async (text: string): Promise<number[] | null> => {
-  try {
-    const response = await ai.models.embedContent({
-      model: EMBEDDING_MODEL,
-      contents: text,
-    });
-
-    if (!response.embeddings?.[0]?.values?.length) {
-      return null;
-    }
-
-    const values = response.embeddings[0].values;
-    return values;
-  } catch (error) {
-    console.error("Embedding Generation Error:", error);
-    return null;
-  }
-};
-
-try {
-  redisClient = createClient({ url: process.env.REDIS_URL });
-  await redisClient.connect();
-  const data = await redisClient.get(PRODUCTS_KEY);
-  if (data) {
-    products = JSON.parse(data);
-  }
-} catch (error) {
-  console.error("Redis Initial Connection Error:", error);
-}
-
-async function getProducts(): Promise<Product[]> {
-  if (redisClient) {
-    try {
-      const data = await redisClient.get(PRODUCTS_KEY);
-      if (data) {
-        products = JSON.parse(data);
-      }
-    } catch (error) {
-      console.error("Redis Error:", error);
-    }
-  }
-
-  return products;
-}
-
-const checkPassword = async (password: string) => {
-  return await bcrypt.compare(password, ADMIN_PASSWORD_HASH);
-};
-
-const validatePostPayload = (data: Product) => {
-  let isValid = true;
-  const errors: { [key: string]: string } = {};
-
-  ["title", "description", "price", "image"].forEach((field) => {
-    const value = data[field as keyof Product];
-    if (!value) {
-      isValid = false;
-      errors[field] = `${field} is required`;
-    }
-  });
-
-  return { isValid, errors };
-};
+let products = await getInitialProductsFromRedis(redisClient);
 
 export async function GET(request: NextRequest) {
   const id = request.nextUrl.searchParams.get("id");
   const useSemanticSearch =
     request.nextUrl.searchParams.get("useSemanticSearch");
   let search = request.nextUrl.searchParams.get("search");
-  let products = await getProducts();
 
   if (id) {
     const product = products.find((p) => p.id.toString() === id);
@@ -116,7 +41,7 @@ export async function GET(request: NextRequest) {
   if (semanticSearch) {
     const similarities: { [key: string]: number | null } = {};
 
-    products = products.filter((p) => {
+    const filteredProducts = products.filter((p) => {
       const title = p.title;
       if (!p.embeddings) {
         similarities[title] = null;
@@ -127,19 +52,16 @@ export async function GET(request: NextRequest) {
       return similarity && similarity > THREASHOLD;
     });
 
-    return NextResponse.json({ products, similarities });
+    return NextResponse.json({ products: filteredProducts, similarities });
   }
 
   // use regular search if embedding
   search = search.toLowerCase();
-  products = products.filter((p) => {
-    const { title, description } = p;
-    return (
-      title.toLowerCase().startsWith(search) ||
-      description.toLowerCase().startsWith(search)
-    );
+  const filteredProducts = products.filter((p) => {
+    return p.title.toLowerCase().startsWith(search);
   });
-  return NextResponse.json({ products });
+
+  return NextResponse.json({ products: filteredProducts });
 }
 
 export async function POST(request: NextRequest) {
@@ -169,8 +91,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const products = await getProducts();
-
     // edit
     if (product.id) {
       const pruductIndex = products.findIndex((p) => p.id === product.id);
@@ -192,7 +112,7 @@ export async function POST(request: NextRequest) {
       product.embeddings = products[pruductIndex].embeddings;
       products[pruductIndex] = { ...products[pruductIndex], ...product };
 
-      await saveProductsInRedis(products);
+      await saveProductsInRedis(redisClient, products);
 
       return NextResponse.json(products[pruductIndex], {
         status: StatusCodes.OK,
@@ -216,7 +136,7 @@ export async function POST(request: NextRequest) {
 
     products.push(newProduct);
 
-    await saveProductsInRedis(products);
+    await saveProductsInRedis(redisClient, products);
 
     return NextResponse.json(newProduct, { status: StatusCodes.CREATED });
   } catch (error) {
@@ -233,10 +153,10 @@ export async function DELETE(request: NextRequest) {
   if (!id) {
     return NextResponse.json({ success: false, status: StatusCodes.NOT_FOUND });
   }
-  let products = await getProducts();
+
   products = products.filter((p) => p.id.toString() !== id);
 
-  await saveProductsInRedis(products);
+  await saveProductsInRedis(redisClient, products);
 
   return NextResponse.json({ success: true, status: StatusCodes.NO_CONTENT });
 }
