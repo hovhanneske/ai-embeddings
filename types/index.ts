@@ -12,4 +12,5 @@ export interface ProductFormState {
   description: string;
   price: string;
   image: string;
+  password: string;
 }

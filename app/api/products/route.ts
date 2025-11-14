@@ -1,10 +1,19 @@
 import { createClient, type RedisClientType } from "redis";
 import { GoogleGenAI } from "@google/genai";
 import cosineSimilarity from "compute-cosine-similarity";
+import bcrypt from "bcrypt";
 import { NextResponse, NextRequest } from "next/server";
 import { StatusCodes } from "http-status-codes";
 
 import { Product } from "@/types";
+
+if (!process.env.ADMIN_PASSWORD_HASH) {
+  throw new Error("ADMIN_PASSWORD_HASH env variable is required.");
+}
+const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH.replaceAll(
+  "_DOLLAR_",
+  "$"
+);
 
 const ai = new GoogleGenAI({});
 const EMBEDDING_MODEL = "gemini-embedding-001";
@@ -65,6 +74,10 @@ async function getProducts(): Promise<Product[]> {
 
   return products;
 }
+
+const checkPassword = async (password: string) => {
+  return await bcrypt.compare(password, ADMIN_PASSWORD_HASH);
+};
 
 const validatePostPayload = (data: Product) => {
   let isValid = true;
@@ -131,9 +144,24 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const data: Product = await request.json();
+    const {
+      product,
+      password,
+    }: {
+      product: Product;
+      password: string;
+    } = await request.json();
 
-    const { isValid, errors } = validatePostPayload(data);
+    const isAdmin = await checkPassword(password);
+
+    if (!isAdmin) {
+      return NextResponse.json(
+        { message: "Invalid Password" },
+        { status: StatusCodes.BAD_REQUEST }
+      );
+    }
+
+    const { isValid, errors } = validatePostPayload(product);
     if (!isValid) {
       return NextResponse.json(
         { message: "Product not found", errors },
@@ -144,8 +172,8 @@ export async function POST(request: NextRequest) {
     const products = await getProducts();
 
     // edit
-    if (data.id) {
-      const pruductIndex = products.findIndex((p) => p.id === data.id);
+    if (product.id) {
+      const pruductIndex = products.findIndex((p) => p.id === product.id);
       if (pruductIndex === -1) {
         return NextResponse.json(
           { message: "Product not found" },
@@ -154,11 +182,15 @@ export async function POST(request: NextRequest) {
       }
 
       // generate new embedding when title changed
-      if (products[pruductIndex].title !== data.title) {
-        products[pruductIndex].embeddings = await generateEmbedding(data.title);
+      if (products[pruductIndex].title !== product.title) {
+        products[pruductIndex].embeddings = await generateEmbedding(
+          product.title
+        );
       }
 
-      products[pruductIndex] = { ...products[pruductIndex], ...data };
+      // embeddings don't come with request
+      product.embeddings = products[pruductIndex].embeddings;
+      products[pruductIndex] = { ...products[pruductIndex], ...product };
 
       await saveProductsInRedis(products);
 
@@ -172,12 +204,12 @@ export async function POST(request: NextRequest) {
       ? Math.max(...products.map((p) => p.id)) + 1
       : 1;
 
-    data.id = newId;
+    product.id = newId;
 
-    const embeddings = await generateEmbedding(data.title);
+    const embeddings = await generateEmbedding(product.title);
 
     const newProduct: Product = {
-      ...data,
+      ...product,
       id: newId,
       embeddings,
     };

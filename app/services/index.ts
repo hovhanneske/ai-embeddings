@@ -29,10 +29,18 @@ export const createOrEditProduct = async (
   formData: ProductFormState,
   id: string
 ) => {
-  const payload = {
-    ...formData,
+  const { title, description, price, image, password } = formData;
+  const product = {
     id: Number(id),
-    price: parseFloat(formData.price),
+    title,
+    description,
+    price,
+    image,
+  };
+
+  const payload = {
+    password,
+    product,
   };
   return axios.post(BASE_URL, payload);
 };

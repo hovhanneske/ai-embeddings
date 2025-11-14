@@ -1,19 +1,21 @@
 import "./globals.css";
 
-import {Toaster} from "react-hot-toast";
+import { Toaster } from "react-hot-toast";
 
-import Header from "@/components/Header";
-import Footer from "@/components/Footer";
+import Header from "@/components/header/Header";
+import Footer from "@/components/footer/Footer";
 
-export default function RootLayout({ children } : { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="en">
       <body>
-        <Toaster position="top-right"/>
+        <Toaster position="top-right" />
         <Header />
-        <main className="container mx-auto p-4 min-h-screen">
-          {children}
-        </main>
+        <main className="container mx-auto p-4 min-h-screen">{children}</main>
         <Footer />
       </body>
     </html>

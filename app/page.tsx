@@ -4,10 +4,9 @@ import { toast } from "react-hot-toast";
 
 import { useState, useEffect } from "react";
 
-import ProductCard from "@/components/ProductCard";
+import ProductCard from "@/components/product-card/ProductCard";
 
 import { getProducts } from "./services";
-
 
 import type { Product } from "@/types";
 
@@ -22,7 +21,7 @@ export default function SearchPage() {
     async function fetchProducts() {
       setLoading(true);
       try {
-        const {data} = await getProducts(useSemanticSearch, debouncedSearch);
+        const { data } = await getProducts(useSemanticSearch, debouncedSearch);
         setProducts(data.products);
       } catch (error) {
         toast.error("Failed to fetch products.");
@@ -66,7 +65,7 @@ export default function SearchPage() {
         <input
           id="use-semantic-search"
           type="checkbox"
-          onChange={e => setUseSemanticSearch(e.target.checked)}
+          onChange={(e) => setUseSemanticSearch(e.target.checked)}
           className="h-5 w-5 accent-green-600 cursor-pointer rounded-md border-gray-300 focus:ring-2 focus:ring-green-500 focus:outline-none transition-all"
         />
       </div>

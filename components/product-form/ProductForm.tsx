@@ -5,6 +5,8 @@ import { toast } from "react-hot-toast";
 import { useState, FormEvent, ChangeEvent, useEffect } from "react";
 import { useParams } from "next/navigation";
 
+import { ProductFormInput } from "./input/input";
+
 import { createOrEditProduct, getProductById } from "@/app/services";
 
 import { ProductFormState } from "@/types";
@@ -15,11 +17,12 @@ export default function ProductForm() {
     description: "",
     price: "",
     image: "",
+    password: "",
   });
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const { id } = useParams<{id: string}>();
+  const { id } = useParams<{ id: string }>();
 
   const handleChange = (
     e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -33,7 +36,13 @@ export default function ProductForm() {
     const success = await handleFormSubmission(formData);
 
     if (success) {
-      setFormData({ title: "", description: "", price: "", image: "" });
+      setFormData({
+        title: "",
+        description: "",
+        price: "",
+        image: "",
+        password: "",
+      });
     }
   };
 
@@ -65,8 +74,8 @@ export default function ProductForm() {
 
     const getProductData = async () => {
       try {
-        const {data} = await getProductById(Number(id));
-        setFormData(data.product);
+        const { data } = await getProductById(Number(id));
+        setFormData({ ...data.product, password: "" });
       } catch (error) {
         console.error(error);
         toast.error("Failed to fetch product data");
@@ -82,54 +91,48 @@ export default function ProductForm() {
       </h1>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        <label className="block">
-          <span className="text-gray-700">Product Title</span>
-          <input
-            type="text"
-            name="title"
-            value={formData.title}
-            onChange={handleChange}
-            required
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-3 focus:ring-blue-500 focus:border-blue-500"
-          />
-        </label>
+        <ProductFormInput
+          label="Product Title"
+          name="title"
+          value={formData.title}
+          onChange={handleChange}
+          required
+        />
 
-        <label className="block">
-          <span className="text-gray-700">Description</span>
-          <textarea
-            name="description"
-            value={formData.description}
-            onChange={handleChange}
-            required
-            rows={3}
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-3 focus:ring-blue-500 focus:border-blue-500"
-          ></textarea>
-        </label>
+        <ProductFormInput
+          label="Description"
+          name="description"
+          value={formData.description}
+          onChange={handleChange}
+          required
+          isTextarea
+        />
 
-        <label className="block">
-          <span className="text-gray-700">Price ($)</span>
-          <input
-            type="number"
-            name="price"
-            value={formData.price}
-            onChange={handleChange}
-            required
-            step="0.01"
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-3 focus:ring-blue-500 focus:border-blue-500"
-          />
-        </label>
+        <ProductFormInput
+          label="Price"
+          name="price"
+          value={formData.price}
+          onChange={handleChange}
+          type="number"
+          required
+        />
 
-        <label className="block">
-          <span className="text-gray-700">Image URL / Path</span>
-          <input
-            type="text"
-            name="image"
-            value={formData.image}
-            onChange={handleChange}
-            required
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-3 focus:ring-blue-500 focus:border-blue-500"
-          />
-        </label>
+        <ProductFormInput
+          label="Image URL"
+          name="image"
+          value={formData.image}
+          onChange={handleChange}
+          required
+        />
+
+        <ProductFormInput
+          label="Password"
+          name="password"
+          value={formData.password}
+          onChange={handleChange}
+          required
+          type="password"
+        />
 
         <button
           disabled={isLoading}
