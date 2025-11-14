@@ -13,9 +13,11 @@ export default function ProductCard({ product }: Props) {
       <div className="relative w-full h-48 bg-gray-100"
            data-has-embeddings={product.embeddings?.length ? "true" : "false"}>
         <Image 
-          src={product.image || "/images/default.jpg"} 
-          alt={product.title} 
-          fill 
+          src={product.image} 
+          alt={product.title}
+          loading="eager"
+          fill
+          sizes="(max-width: 575px) 100vw, (max-width: 768px) 50vw, (max-width: 1200px) 25vw, 25vw"
           style={{ objectFit: "cover" }} 
         />
       </div>

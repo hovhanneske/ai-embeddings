@@ -29,8 +29,10 @@ export default async function ProductDetailPage({ params }: Props) {
       <div className="w-full md:w-1/2 relative h-96 bg-gray-100 rounded-lg overflow-hidden">
         <Image 
           src={product.image || "/images/default.jpg"} 
-          alt={product.title} 
-          fill 
+          alt={product.title}
+          loading="eager"
+          fill
+          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 50vw"
           style={{ objectFit: "contain" }} 
         />
       </div>
