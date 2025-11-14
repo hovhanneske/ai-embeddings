@@ -2,6 +2,7 @@
 
 import { toast } from "react-hot-toast";
 
+import Link from "next/link";
 import { useState, FormEvent, ChangeEvent, useEffect } from "react";
 import { useParams } from "next/navigation";
 
@@ -141,6 +142,13 @@ export default function ProductForm() {
         >
           {id ? "Save Changes" : "Submit Product"}
         </button>
+
+        <Link
+          href="/"
+          className="flex justify-center w-full py-3 bg-gray-600 text-white font-semibold rounded-lg hover:bg-gray-700 transition duration-200"
+        >
+          Cancel
+        </Link>
       </form>
 
       {message && (
